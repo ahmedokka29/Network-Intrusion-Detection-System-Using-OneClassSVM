@@ -23,9 +23,10 @@ A comprehensive machine learning solution for network intrusion detection using 
 This project implements a machine learning approach to network intrusion detection using the One-Class Support Vector Machine (OneClassSVM) algorithm. The system is designed to learn the characteristics of normal network traffic and identify anomalies that may represent potential security threats or intrusions.
 
 The complete pipeline includes:
+
 - Data preprocessing tailored for network flow data
 - Feature engineering for IP addresses and network traffic attributes
-- Exploratory data analysis with dimensionality reduction 
+- Exploratory data analysis with dimensionality reduction
 - Model training with hyperparameter optimization
 - Custom threshold optimization for anomaly detection
 - Comprehensive performance evaluation and visualization
