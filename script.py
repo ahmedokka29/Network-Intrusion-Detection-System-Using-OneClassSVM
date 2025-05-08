@@ -1,7 +1,6 @@
-
+from sklearn.metrics import roc_curve, auc
 from sklearn.metrics import make_scorer, f1_score
 from sklearn.model_selection import GridSearchCV
-import kagglehub
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
@@ -14,11 +13,9 @@ from sklearn.feature_selection import SelectKBest, f_classif
 import ipaddress
 import warnings
 warnings.filterwarnings('ignore')
-path = kagglehub.dataset_download(
-    "mohamedelrifai/network-anomaly-detection-dataset")
-print("Path to dataset files:", path)
-csv_path = path + "/sampled_NF-CSE-CIC-IDS2018-v2.csv"
-features_path = path + "/NetFlow_v2_Features.csv"
+
+csv_path = "./sampled_NF-CSE-CIC-IDS2018-v2.csv"
+features_path = "/NetFlow_v2_Features.csv"
 
 file_path = csv_path
 df = pd.read_csv(file_path)
@@ -96,41 +93,59 @@ X_train_normal = X_train[y_train == 0]
 
 
 print("\nTraining OneClassSVM...")
-ocsvm = OneClassSVM(kernel='rbf', gamma='auto', nu=0.01)
+ocsvm = OneClassSVM(kernel='rbf', gamma='scale', nu=0.1)
 ocsvm.fit(X_train_normal)
 
 
-y_pred_test = ocsvm.predict(X_test)
+decision_scores = ocsvm.decision_function(X_test)
 
 
-y_pred_binary = np.where(y_pred_test == -1, 1, 0)
+fpr, tpr, thresholds = roc_curve(y_test, -decision_scores)
+optimal_idx = np.argmax(tpr - fpr)
+optimal_threshold = -thresholds[optimal_idx]
 
 
-accuracy = accuracy_score(y_test, y_pred_binary)
+y_pred_test = np.where(decision_scores < optimal_threshold, 1, 0)
+
+
+accuracy = accuracy_score(y_test, y_pred_test)
 precision, recall, f1, _ = precision_recall_fscore_support(
-    y_test, y_pred_binary, average='binary')
+    y_test, y_pred_test, average='binary')
 
-print("\nModel Performance:")
+print("\nModel Performance with Optimal Threshold:")
 print(f"Accuracy: {accuracy:.4f}")
 print(f"Precision: {precision:.4f}")
 print(f"Recall: {recall:.4f}")
 print(f"F1 Score: {f1:.4f}")
 
 
-cm = confusion_matrix(y_test, y_pred_binary)
+plt.figure(figsize=(8, 6))
+plt.plot(fpr, tpr, color='darkorange', lw=2,
+         label=f'ROC curve (AUC = {auc(fpr, tpr):.2f})')
+plt.plot([0, 1], [0, 1], color='navy', lw=2, linestyle='--')
+plt.xlim([0.0, 1.0])
+plt.ylim([0.0, 1.05])
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.title('Receiver Operating Characteristic (ROC) Curve')
+plt.legend(loc="lower right")
+plt.show()
+
+
+cm = confusion_matrix(y_test, y_pred_test)
 plt.figure(figsize=(8, 6))
 sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
             xticklabels=['Normal', 'Attack'],
             yticklabels=['Normal', 'Attack'])
 plt.xlabel('Predicted')
 plt.ylabel('Actual')
-plt.title('Confusion Matrix')
+plt.title('Confusion Matrix with Optimal Threshold')
 plt.tight_layout()
 plt.show()
 
 
-print("\nClassification Report:")
-print(classification_report(y_test, y_pred_binary,
+print("\nClassification Report with Optimal Threshold:")
+print(classification_report(y_test, y_pred_test,
       target_names=['Normal', 'Attack']))
 
 
